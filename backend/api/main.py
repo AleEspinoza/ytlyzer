@@ -58,3 +58,21 @@ async def get_job(job_id: str):
     if result is None:
         raise HTTPException(status_code=404, detail="Job not found.")
     return result
+
+
+class ProcessRequest(BaseModel):
+    job_id: str
+    url: str
+    query: str
+
+
+@app.post("/internal/process", include_in_schema=False)
+async def internal_process(request: ProcessRequest):
+    """
+    Called by Cloud Tasks to execute the transcription + analysis pipeline.
+    Not exposed in the public API docs.
+    """
+    from backend.services.transcriber import process_job
+
+    await process_job(request.job_id, request.url, request.query)
+    return {"status": "ok"}
