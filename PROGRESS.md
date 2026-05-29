@@ -63,5 +63,5 @@
 - [ ] `agents/cloud_eng/agent.py`
 
 ### Nice to have
-- [ ] `git config --global user.name / user.email` — commits show hostname instead of real name
-- [ ] Rename local branch `master` → `main` to match remote
+- [x] `git config --global user.name / user.email` — set to `AleEspinoza` with noreply GitHub email
+- [x] Rename local branch `master` → `main` to match remote
