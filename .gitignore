@@ -1,0 +1,51 @@
+# Environment
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Docker
+*.log
+
+# GCP credentials
+*.json
+service-account*.json
+gcloud-credentials*.json
+
+# Whisper / audio temp files
+*.mp3
+*.mp4
+*.wav
+*.m4a
+*.webm
+tmp/
+temp/
