@@ -1,14 +1,17 @@
 import os
 import json
-import anthropic
+from anthropic import AnthropicVertex
 
 _client = None
 
 
-def _get_client() -> anthropic.Anthropic:
+def _get_client() -> AnthropicVertex:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        _client = AnthropicVertex(
+            region=os.environ["GCP_REGION"],
+            project_id=os.environ["GCP_PROJECT_ID"],
+        )
     return _client
 
 

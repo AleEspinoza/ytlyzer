@@ -63,7 +63,6 @@ jobs:
             --set-env-vars GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
             --set-env-vars GCP_REGION=${{ env.GCP_REGION }} \
             --set-env-vars CLOUD_TASKS_LOCATION=${{ env.GCP_REGION }} \
-            --set-secrets ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest \
             --set-secrets GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest \
             --set-secrets FIRESTORE_COLLECTION=FIRESTORE_COLLECTION:latest \
             --set-secrets CLOUD_TASKS_QUEUE=CLOUD_TASKS_QUEUE:latest \
