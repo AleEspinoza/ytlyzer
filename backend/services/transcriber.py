@@ -1,8 +1,8 @@
 import os
 import uuid
 import tempfile
-import whisper
 import yt_dlp
+from faster_whisper import WhisperModel
 from google.cloud import firestore, tasks_v2
 
 _db = None
@@ -16,10 +16,10 @@ def _get_db() -> firestore.Client:
     return _db
 
 
-def _get_whisper_model() -> whisper.Whisper:
+def _get_whisper_model() -> WhisperModel:
     global _whisper_model
     if _whisper_model is None:
-        _whisper_model = whisper.load_model("base")
+        _whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
     return _whisper_model
 
 
@@ -43,14 +43,14 @@ def _download_audio(youtube_url: str, output_path: str) -> str:
 def _transcribe_audio(audio_path: str) -> list[dict]:
     """Run Whisper on audio file, return list of segments with timestamps."""
     model = _get_whisper_model()
-    result = model.transcribe(audio_path, verbose=False)
+    segments, _ = model.transcribe(audio_path, beam_size=5)
     return [
         {
-            "start": round(seg["start"], 2),
-            "end": round(seg["end"], 2),
-            "text": seg["text"].strip(),
+            "start": round(seg.start, 2),
+            "end": round(seg.end, 2),
+            "text": seg.text.strip(),
         }
-        for seg in result["segments"]
+        for seg in segments
     ]
 
 
