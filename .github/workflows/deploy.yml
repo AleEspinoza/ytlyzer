@@ -66,4 +66,5 @@ jobs:
             --set-secrets GCS_BUCKET_NAME=GCS_BUCKET_NAME:latest \
             --set-secrets FIRESTORE_COLLECTION=FIRESTORE_COLLECTION:latest \
             --set-secrets CLOUD_TASKS_QUEUE=CLOUD_TASKS_QUEUE:latest \
-            --set-secrets CLOUD_RUN_URL=CLOUD_RUN_URL:latest
+            --set-secrets CLOUD_RUN_URL=CLOUD_RUN_URL:latest \
+            --service-account=ytlyzer-runtime@ytlyzer.iam.gserviceaccount.com
