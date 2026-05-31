@@ -1,8 +1,10 @@
 import os
 import uuid
+import json
 import tempfile
 import yt_dlp
 from faster_whisper import WhisperModel
+from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 from google.cloud import firestore, tasks_v2
 
 _db = None
@@ -21,6 +23,39 @@ def _get_whisper_model() -> WhisperModel:
     if _whisper_model is None:
         _whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
     return _whisper_model
+
+
+def _extract_video_id(youtube_url: str) -> str:
+    """Extract the video ID from a YouTube URL."""
+    import re
+    patterns = [
+        r"(?:v=|youtu\.be/|embed/|shorts/)([a-zA-Z0-9_-]{11})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, youtube_url)
+        if match:
+            return match.group(1)
+    raise ValueError(f"Could not extract video ID from URL: {youtube_url}")
+
+
+def _fetch_youtube_transcript(video_id: str) -> list[dict] | None:
+    """
+    Try to fetch YouTube's built-in transcript (auto-generated or manual).
+    Returns segments list or None if unavailable.
+    """
+    try:
+        ytt = YouTubeTranscriptApi()
+        transcript = ytt.fetch(video_id)
+        return [
+            {
+                "start": round(snippet.start, 2),
+                "end": round(snippet.start + snippet.duration, 2),
+                "text": snippet.text.strip(),
+            }
+            for snippet in transcript
+        ]
+    except (NoTranscriptFound, TranscriptsDisabled):
+        return None
 
 
 def _download_audio(youtube_url: str, output_path: str) -> str:
@@ -54,6 +89,27 @@ def _transcribe_audio(audio_path: str) -> list[dict]:
     ]
 
 
+def _get_segments(youtube_url: str) -> tuple[list[dict], str]:
+    """
+    Get transcript segments using the best available method.
+    1. YouTube built-in transcript (fast, no audio download)
+    2. Whisper via yt-dlp (fallback for videos without captions)
+    Returns (segments, method_used).
+    """
+    video_id = _extract_video_id(youtube_url)
+
+    segments = _fetch_youtube_transcript(video_id)
+    if segments:
+        return segments, "youtube_transcript"
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        audio_path = os.path.join(tmp_dir, "audio")
+        audio_file = _download_audio(youtube_url, audio_path)
+        segments = _transcribe_audio(audio_file)
+
+    return segments, "whisper"
+
+
 async def enqueue_transcription_job(youtube_url: str, query: str) -> str:
     """
     Create a Firestore job record and enqueue a Cloud Tasks task.
@@ -78,8 +134,6 @@ async def enqueue_transcription_job(youtube_url: str, query: str) -> str:
 
     client = tasks_v2.CloudTasksClient()
     parent = client.queue_path(project, location, queue)
-
-    import json
     payload = json.dumps({"job_id": job_id, "url": youtube_url, "query": query}).encode()
 
     client.create_task(request={
@@ -118,11 +172,7 @@ async def process_job(job_id: str, youtube_url: str, query: str) -> None:
     ref.update({"status": "processing"})
 
     try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            audio_path = os.path.join(tmp_dir, "audio")
-            audio_file = _download_audio(youtube_url, audio_path)
-            segments = _transcribe_audio(audio_file)
-
+        segments, method = _get_segments(youtube_url)
         transcript = " ".join(seg["text"] for seg in segments)
 
         from backend.services.analyzer import analyze_transcript
@@ -132,6 +182,7 @@ async def process_job(job_id: str, youtube_url: str, query: str) -> None:
             "status": "completed",
             "transcript": transcript,
             "fragments": fragments,
+            "transcription_method": method,
         })
 
     except Exception as e:
